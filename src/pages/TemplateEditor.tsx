@@ -3,57 +3,442 @@ import { useState, useRef, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft, Download, Save, Type, Palette, Image, Undo, Redo } from "lucide-react";
 import { toast } from "sonner";
+import { fabric } from "fabric";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const TemplateEditor = () => {
   const { templateId } = useParams();
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [selectedElement, setSelectedElement] = useState<string | null>(null);
-  const [templateData, setTemplateData] = useState({
-    title: "अनुप्रिया",
-    subtitle: "प्रथम वाढदिवस सोहळा निमंत्रण",
-    date: "सोमवार दि. २१/१२/२०२३ रोजी",
-    time: "सायंकाळी : ७ वाजता",
-    venue: "डाकुर बाजारगेट के पास उप कार्यालय, मुंबई, महाराष्ट्र - ४३४००१",
-    description: "सोनेरी दिवसाच्या सोनेरी शुभेच्छा देण्यासाठी हवेत मार्गसी सारी सोनेरी... माझी पती, माझी सोनुली... बघता बघता दोन वर्षांची झाली. वाढदिवसानिमित्त आयोजित केला आहे एक हेत... ज्याचे आमंत्रण आहे तुम्हा सर्वांना येण्याचे.",
-    hostNames: "श्री. आदित्य अहिरे\nश्री. पुनम विजय अहिरे",
-    contact1: "९८०००००",
-    contact2: "९५०००००"
-  });
+  const canvasRef = useRef<HTMLDivElement>(null);
+  const [canvas, setCanvas] = useState<fabric.Canvas | null>(null);
+  const [activeTab, setActiveTab] = useState<"design" | "images">("design");
+  const [selectedObject, setSelectedObject] = useState<fabric.Object | null>(null);
+  const [templateLoaded, setTemplateLoaded] = useState(false);
 
-  const [activeTab, setActiveTab] = useState<"text" | "design" | "images">("text");
-
-  const fontOptions = [
-    { value: "marathi", label: "Noto Sans Devanagari", className: "font-marathi" },
-    { value: "english", label: "Poppins", className: "font-english" },
-    { value: "decorative", label: "Dancing Script", className: "font-decorative" }
-  ];
-
+  // Load the template when component mounts
   useEffect(() => {
-    // Initialize canvas or template rendering
+    if (!canvasRef.current) return;
+
+    // Initialize Fabric Canvas
+    const fabricCanvas = new fabric.Canvas("editor-canvas", {
+      width: 600,
+      height: 800,
+      backgroundColor: "#f8f2ff",
+      preserveObjectStacking: true,
+    });
+    
+    setCanvas(fabricCanvas);
+
+    // Event listener for object selection
+    fabricCanvas.on("selection:created", (e) => {
+      setSelectedObject(fabricCanvas.getActiveObject());
+    });
+
+    fabricCanvas.on("selection:updated", (e) => {
+      setSelectedObject(fabricCanvas.getActiveObject());
+    });
+
+    fabricCanvas.on("selection:cleared", (e) => {
+      setSelectedObject(null);
+    });
+
+    // Load the birthday template
     if (templateId === "birthday-template") {
-      toast.success("Birthday template loaded! Start customizing your invitation.");
+      loadBirthdayTemplate(fabricCanvas);
     }
+
+    return () => {
+      fabricCanvas.dispose();
+    };
   }, [templateId]);
 
-  const handleTextChange = (field: string, value: string) => {
-    setTemplateData(prev => ({
-      ...prev,
-      [field]: value
-    }));
+  // Function to load the birthday template with the provided design
+  const loadBirthdayTemplate = (canvas: fabric.Canvas) => {
+    // Background gradient
+    canvas.setBackgroundColor(
+      new fabric.Gradient({
+        type: 'linear',
+        coords: {
+          x1: 0,
+          y1: 0,
+          x2: 600,
+          y2: 800
+        },
+        colorStops: [
+          { offset: 0, color: '#f9c5d1' },
+          { offset: 1, color: '#f3e7e9' }
+        ]
+      }),
+      canvas.renderAll.bind(canvas)
+    );
+
+    // Add bunting flags at the top
+    const buntingImg = new Image();
+    buntingImg.src = "/lovable-uploads/656232f1-7e41-4fb6-8f98-59eedbe9546a.png";
+    buntingImg.onload = () => {
+      // Use the bunting from the template
+      const bunting = new fabric.Image(buntingImg, {
+        left: 0,
+        top: 0,
+        width: 600,
+        height: 120,
+        selectable: false,
+        opacity: 0.8
+      });
+      canvas.add(bunting);
+      canvas.sendToBack(bunting);
+    };
+
+    // Add the blessing text at top
+    addEditableText(canvas, "|| श्री गणेशाय नमः ||", 300, 50, {
+      fontSize: 24,
+      fill: '#d23369',
+      fontFamily: 'Noto Sans Devanagari',
+      textAlign: 'center',
+      fontWeight: 'bold'
+    });
+
+    // Add main title
+    addEditableText(canvas, "प्रथम वाढदिवस सोहळा निमंत्रण", 300, 100, {
+      fontSize: 36,
+      fill: '#d23369',
+      fontFamily: 'Noto Sans Devanagari',
+      textAlign: 'center',
+      fontWeight: 'bold'
+    });
+
+    // Add child name
+    addEditableText(canvas, "अनुप्रिया", 300, 180, {
+      fontSize: 48,
+      fill: '#b91c1c',
+      fontFamily: 'Noto Sans Devanagari',
+      textAlign: 'center',
+      fontWeight: 'bold'
+    });
+
+    // Add decorative line
+    const line = new fabric.Rect({
+      left: 240,
+      top: 240,
+      width: 120,
+      height: 4,
+      fill: new fabric.Gradient({
+        type: 'linear',
+        coords: {
+          x1: 0,
+          y1: 0,
+          x2: 120,
+          y2: 0
+        },
+        colorStops: [
+          { offset: 0, color: '#d23369' },
+          { offset: 1, color: '#9333ea' }
+        ]
+      }),
+      selectable: false
+    });
+    canvas.add(line);
+
+    // Add placeholder for child photo
+    const childPhotoPlaceholder = new fabric.Circle({
+      left: 225,
+      top: 280,
+      radius: 75,
+      fill: '#f3e7e9',
+      stroke: '#ffffff',
+      strokeWidth: 8,
+      originX: 'center',
+      originY: 'center'
+    });
+    canvas.add(childPhotoPlaceholder);
+
+    // Add program text
+    addEditableText(canvas, "✦ कार्यक्रम ✦", 300, 400, {
+      fontSize: 22,
+      fill: '#d23369',
+      fontFamily: 'Noto Sans Devanagari',
+      textAlign: 'center'
+    });
+
+    // Add date
+    addEditableText(canvas, "सोमवार दि. २१/१२/२०२३ रोजी", 300, 430, {
+      fontSize: 20,
+      fill: '#333333',
+      fontFamily: 'Noto Sans Devanagari',
+      textAlign: 'center',
+      fontWeight: 'bold'
+    });
+
+    // Add time
+    addEditableText(canvas, "सायंकाळी : ७ वाजता", 300, 460, {
+      fontSize: 18,
+      fill: '#333333',
+      fontFamily: 'Noto Sans Devanagari',
+      textAlign: 'center'
+    });
+
+    // Add description
+    addEditableText(canvas, "सोनेरी दिवसाच्या सोनेरी शुभेच्छा देण्यासाठी हवेत मार्गसी सारी सोनेरी... \nमाझी पती, माझी सोनुली... बघता बघता दोन वर्षांची झाली. \nवाढदिवसानिमित्त आयोजित केला आहे एक हेत... \nज्याचे आमंत्रण आहे तुम्हा सर्वांना येण्याचे.", 300, 540, {
+      fontSize: 14,
+      fill: '#666666',
+      fontFamily: 'Noto Sans Devanagari',
+      textAlign: 'center',
+      lineHeight: 1.3
+    });
+
+    // Add venue section
+    addEditableText(canvas, "✦ स्थळ :- ✦", 300, 620, {
+      fontSize: 18,
+      fill: '#d23369',
+      fontFamily: 'Noto Sans Devanagari',
+      textAlign: 'center'
+    });
+
+    // Add venue
+    addEditableText(canvas, "डाकुर बाजारगेट के पास उप कार्यालय, मुंबई, महाराष्ट्र - ४३४००१", 300, 645, {
+      fontSize: 14,
+      fill: '#666666',
+      fontFamily: 'Noto Sans Devanagari',
+      textAlign: 'center'
+    });
+
+    // Add host text
+    addEditableText(canvas, "✦ आपले नम्र ✦", 100, 700, {
+      fontSize: 16,
+      fill: '#d23369',
+      fontFamily: 'Noto Sans Devanagari',
+      textAlign: 'left'
+    });
+
+    // Add host names
+    addEditableText(canvas, "श्री. आदित्य अहिरे\nश्री. पुनम विजय अहिरे", 100, 725, {
+      fontSize: 14,
+      fill: '#666666',
+      fontFamily: 'Noto Sans Devanagari',
+      textAlign: 'left'
+    });
+
+    // Add contact text
+    addEditableText(canvas, "✦ संपर्क ✦", 500, 700, {
+      fontSize: 16,
+      fill: '#d23369',
+      fontFamily: 'Noto Sans Devanagari',
+      textAlign: 'right'
+    });
+
+    // Add contacts
+    addEditableText(canvas, "📞 ९८०००००\n📞 ९५०००००", 500, 725, {
+      fontSize: 14,
+      fill: '#d23369',
+      fontFamily: 'Noto Sans Devanagari',
+      textAlign: 'right'
+    });
+
+    // Add birthday decoration
+    const birthdayRect = new fabric.Rect({
+      left: 300,
+      top: 725,
+      width: 120,
+      height: 60,
+      fill: new fabric.Gradient({
+        type: 'linear',
+        coords: {
+          x1: 0,
+          y1: 0,
+          x2: 120,
+          y2: 0
+        },
+        colorStops: [
+          { offset: 0, color: '#3bb6ad' },
+          { offset: 1, color: '#1976d2' }
+        ]
+      }),
+      rx: 10,
+      ry: 10,
+      originX: 'center',
+      originY: 'center'
+    });
+    canvas.add(birthdayRect);
+
+    // Add birthday text
+    addEditableText(canvas, "BIRTHDAY", 300, 715, {
+      fontSize: 16,
+      fill: '#ffffff',
+      fontFamily: 'Poppins',
+      textAlign: 'center',
+      fontWeight: 'bold'
+    });
+
+    addEditableText(canvas, "CELEBRATIONS", 300, 735, {
+      fontSize: 10,
+      fill: '#ffffff',
+      fontFamily: 'Poppins',
+      textAlign: 'center'
+    });
+
+    // Add balloon decorations
+    const balloonText1 = new fabric.Text("🎈🎈", {
+      left: 50,
+      top: 760,
+      fontSize: 36,
+      selectable: false
+    });
+    canvas.add(balloonText1);
+
+    const balloonText2 = new fabric.Text("🎈🎈", {
+      left: 530,
+      top: 760,
+      fontSize: 36,
+      selectable: false
+    });
+    canvas.add(balloonText2);
+
+    toast.success("Birthday template loaded! Click on any text to edit directly.");
+    setTemplateLoaded(true);
   };
 
-  const handleDownload = () => {
-    // In a real implementation, this would generate and download the image
-    toast.success("Downloading your invitation card...");
+  // Helper function to add editable text
+  const addEditableText = (canvas: fabric.Canvas, text: string, left: number, top: number, options: fabric.ITextOptions) => {
+    const textObj = new fabric.IText(text, {
+      left: left,
+      top: top,
+      originX: options.textAlign === 'center' ? 'center' : (options.textAlign === 'right' ? 'right' : 'left'),
+      originY: 'center',
+      ...options
+    });
+    canvas.add(textObj);
+    return textObj;
   };
 
   const handleSave = () => {
     toast.success("Template saved successfully!");
+  };
+
+  const handleDownload = () => {
+    if (!canvas) return;
+    
+    // Convert canvas to image
+    const dataURL = canvas.toDataURL({
+      format: 'png',
+      quality: 1
+    });
+    
+    // Create download link
+    const link = document.createElement('a');
+    link.download = 'invitation-card.png';
+    link.href = dataURL;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    toast.success("Invitation card downloaded!");
+  };
+
+  const handleUndo = () => {
+    if (!canvas) return;
+    if (canvas._objects.length > 0) {
+      canvas.undo();
+      toast.info("Undo successful");
+    }
+  };
+
+  const handleRedo = () => {
+    if (!canvas) return;
+    canvas.redo();
+    toast.info("Redo successful");
+  };
+
+  const changeObjectColor = (color: string) => {
+    if (!canvas || !selectedObject) return;
+    
+    if (selectedObject.type === 'i-text') {
+      (selectedObject as fabric.IText).set('fill', color);
+      canvas.renderAll();
+    } else {
+      selectedObject.set('fill', color);
+      canvas.renderAll();
+    }
+  };
+
+  const changeObjectFont = (font: string) => {
+    if (!canvas || !selectedObject) return;
+    
+    if (selectedObject.type === 'i-text') {
+      (selectedObject as fabric.IText).set('fontFamily', font);
+      canvas.renderAll();
+    }
+  };
+
+  const handleUploadImage = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!canvas || !e.target.files || e.target.files.length === 0) return;
+    
+    const file = e.target.files[0];
+    const reader = new FileReader();
+    
+    reader.onload = (f) => {
+      const data = f.target?.result as string;
+      fabric.Image.fromURL(data, (img) => {
+        // Scale down the image if it's too big
+        if (img.width && img.height) {
+          if (img.width > 200 || img.height > 200) {
+            const scaleFactor = Math.min(200 / img.width, 200 / img.height);
+            img.scale(scaleFactor);
+          }
+        }
+        
+        img.set({
+          left: 300,
+          top: 300,
+          originX: 'center',
+          originY: 'center'
+        });
+        
+        canvas.add(img);
+        canvas.setActiveObject(img);
+        canvas.renderAll();
+        toast.success("Image added! Resize and position as needed.");
+      });
+    };
+    
+    reader.readAsDataURL(file);
+  };
+
+  const addDecoration = (type: string) => {
+    if (!canvas) return;
+    
+    let text = '';
+    
+    switch (type) {
+      case 'balloons':
+        text = '🎈🎈🎈';
+        break;
+      case 'cake':
+        text = '🎂';
+        break;
+      case 'confetti':
+        text = '🎊';
+        break;
+      case 'star':
+        text = '⭐';
+        break;
+      default:
+        return;
+    }
+    
+    const decoration = new fabric.Text(text, {
+      left: 300,
+      top: 400,
+      fontSize: 36,
+      originX: 'center',
+      originY: 'center'
+    });
+    
+    canvas.add(decoration);
+    canvas.setActiveObject(decoration);
+    canvas.renderAll();
+    toast.success(`${type} decoration added!`);
   };
 
   return (
@@ -84,324 +469,141 @@ const TemplateEditor = () => {
         </div>
       </header>
 
-      <div className="flex">
-        {/* Sidebar */}
-        <div className="w-80 bg-white border-r border-gray-200 h-screen overflow-y-auto">
-          <div className="p-6">
-            {/* Tabs */}
-            <div className="flex bg-gray-100 rounded-lg p-1 mb-6">
-              <button
-                onClick={() => setActiveTab("text")}
-                className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors ${
-                  activeTab === "text" 
-                    ? "bg-white text-purple-600 shadow-sm" 
-                    : "text-gray-600 hover:text-gray-800"
-                }`}
-              >
-                <Type className="h-4 w-4 mx-auto mb-1" />
-                Text
-              </button>
-              <button
-                onClick={() => setActiveTab("design")}
-                className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors ${
-                  activeTab === "design" 
-                    ? "bg-white text-purple-600 shadow-sm" 
-                    : "text-gray-600 hover:text-gray-800"
-                }`}
-              >
-                <Palette className="h-4 w-4 mx-auto mb-1" />
-                Design
-              </button>
-              <button
-                onClick={() => setActiveTab("images")}
-                className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors ${
-                  activeTab === "images" 
-                    ? "bg-white text-purple-600 shadow-sm" 
-                    : "text-gray-600 hover:text-gray-800"
-                }`}
-              >
-                <Image className="h-4 w-4 mx-auto mb-1" />
-                Images
-              </button>
+      <div className="flex flex-col md:flex-row">
+        {/* Main Canvas Area */}
+        <div className="flex-grow p-6 flex justify-center">
+          <div className="relative">
+            <div ref={canvasRef} className="shadow-2xl">
+              <canvas id="editor-canvas" className="rounded-lg"></canvas>
             </div>
-
-            {/* Text Editing Panel */}
-            {activeTab === "text" && (
-              <div className="space-y-6">
-                <div className="space-y-3">
-                  <Label htmlFor="title">Child Name (बालाचे नाव)</Label>
-                  <Input
-                    id="title"
-                    value={templateData.title}
-                    onChange={(e) => handleTextChange("title", e.target.value)}
-                    className="font-marathi text-lg"
-                    placeholder="अनुप्रिया"
-                  />
-                </div>
-
-                <div className="space-y-3">
-                  <Label htmlFor="subtitle">Event Title (कार्यक्रमाचे शीर्षक)</Label>
-                  <Input
-                    id="subtitle"
-                    value={templateData.subtitle}
-                    onChange={(e) => handleTextChange("subtitle", e.target.value)}
-                    className="font-marathi"
-                    placeholder="प्रथम वाढदिवस सोहळा निमंत्रण"
-                  />
-                </div>
-
-                <div className="space-y-3">
-                  <Label htmlFor="date">Date (दिनांक)</Label>
-                  <Input
-                    id="date"
-                    value={templateData.date}
-                    onChange={(e) => handleTextChange("date", e.target.value)}
-                    className="font-marathi"
-                    placeholder="सोमवार दि. २१/१२/२०२३ रोजी"
-                  />
-                </div>
-
-                <div className="space-y-3">
-                  <Label htmlFor="time">Time (वेळ)</Label>
-                  <Input
-                    id="time"
-                    value={templateData.time}
-                    onChange={(e) => handleTextChange("time", e.target.value)}
-                    className="font-marathi"
-                    placeholder="सायंकाळी : ७ वाजता"
-                  />
-                </div>
-
-                <div className="space-y-3">
-                  <Label htmlFor="venue">Venue (ठिकाण)</Label>
-                  <Input
-                    id="venue"
-                    value={templateData.venue}
-                    onChange={(e) => handleTextChange("venue", e.target.value)}
-                    className="font-marathi"
-                    placeholder="कार्यक्रमाचे ठिकाण"
-                  />
-                </div>
-
-                <div className="space-y-3">
-                  <Label htmlFor="hostNames">Host Names (आयोजक)</Label>
-                  <textarea
-                    id="hostNames"
-                    value={templateData.hostNames}
-                    onChange={(e) => handleTextChange("hostNames", e.target.value)}
-                    className="w-full p-2 border border-gray-300 rounded-md font-marathi"
-                    rows={3}
-                    placeholder="श्री. आदित्य अहिरे"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-2">
-                    <Label htmlFor="contact1">Contact 1</Label>
-                    <Input
-                      id="contact1"
-                      value={templateData.contact1}
-                      onChange={(e) => handleTextChange("contact1", e.target.value)}
-                      placeholder="९८०००००"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="contact2">Contact 2</Label>
-                    <Input
-                      id="contact2"
-                      value={templateData.contact2}
-                      onChange={(e) => handleTextChange("contact2", e.target.value)}
-                      placeholder="९५०००००"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Design Panel */}
-            {activeTab === "design" && (
-              <div className="space-y-6">
-                <div className="space-y-3">
-                  <Label>Font Family</Label>
-                  <Select defaultValue="marathi">
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select font" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {fontOptions.map((font) => (
-                        <SelectItem key={font.value} value={font.value}>
-                          <span className={font.className}>{font.label}</span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-3">
-                  <Label>Background Colors</Label>
-                  <div className="grid grid-cols-4 gap-2">
-                    {["#FF6B9D", "#C471ED", "#12D8FA", "#A0E7E5", "#FFB4B4", "#FFEAA7"].map((color) => (
-                      <div
-                        key={color}
-                        className="w-12 h-12 rounded-lg border-2 border-gray-200 cursor-pointer hover:scale-110 transition-transform"
-                        style={{ backgroundColor: color }}
-                        onClick={() => toast.info(`Background changed to ${color}`)}
-                      />
-                    ))}
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <Label>Text Colors</Label>
-                  <div className="grid grid-cols-4 gap-2">
-                    {["#1a1a1a", "#FF1744", "#7B1FA2", "#1976D2", "#388E3C", "#F57C00"].map((color) => (
-                      <div
-                        key={color}
-                        className="w-12 h-12 rounded-lg border-2 border-gray-200 cursor-pointer hover:scale-110 transition-transform"
-                        style={{ backgroundColor: color }}
-                        onClick={() => toast.info(`Text color changed to ${color}`)}
-                      />
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Images Panel */}
-            {activeTab === "images" && (
-              <div className="space-y-6">
-                <div className="space-y-3">
-                  <Label>Upload Child Photo</Label>
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                    <Image className="h-12 w-12 text-gray-400 mx-auto mb-2" />
-                    <p className="text-sm text-gray-600">Click to upload or drag and drop</p>
-                    <p className="text-xs text-gray-500">PNG, JPG up to 10MB</p>
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <Label>Decorative Elements</Label>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="border rounded-lg p-3 text-center cursor-pointer hover:bg-gray-50">
-                      <div className="text-2xl mb-1">🎈</div>
-                      <p className="text-xs">Balloons</p>
-                    </div>
-                    <div className="border rounded-lg p-3 text-center cursor-pointer hover:bg-gray-50">
-                      <div className="text-2xl mb-1">🎂</div>
-                      <p className="text-xs">Cake</p>
-                    </div>
-                    <div className="border rounded-lg p-3 text-center cursor-pointer hover:bg-gray-50">
-                      <div className="text-2xl mb-1">🎊</div>
-                      <p className="text-xs">Confetti</p>
-                    </div>
-                    <div className="border rounded-lg p-3 text-center cursor-pointer hover:bg-gray-50">
-                      <div className="text-2xl mb-1">⭐</div>
-                      <p className="text-xs">Stars</p>
-                    </div>
-                  </div>
-                </div>
+            {!templateLoaded && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
               </div>
             )}
           </div>
         </div>
 
-        {/* Main Canvas Area */}
-        <div className="flex-1 p-6">
-          <Card className="mx-auto max-w-4xl shadow-2xl">
-            <CardContent className="p-0">
-              <div className="relative bg-gradient-to-br from-pink-200 via-purple-200 to-indigo-200 rounded-lg overflow-hidden">
-                {/* Template Preview */}
-                <div className="aspect-[3/4] p-8 relative">
-                  {/* Decorative elements */}
-                  <div className="absolute top-0 left-0 w-full h-20 bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 opacity-20"></div>
-                  
-                  {/* Header with blessing */}
-                  <div className="text-center mb-6">
-                    <p className="text-red-600 font-marathi text-lg mb-4">|| श्री गणेशाय नमः ||</p>
-                    <h1 className="text-4xl font-bold text-pink-600 font-marathi mb-2">{templateData.subtitle}</h1>
+        {/* Right Sidebar for Properties */}
+        <div className="w-full md:w-72 bg-white border-l border-gray-200 p-6">
+          <Tabs defaultValue="design">
+            <TabsList className="grid w-full grid-cols-2 mb-6">
+              <TabsTrigger value="design">
+                <Palette className="h-4 w-4 mr-2" />
+                Design
+              </TabsTrigger>
+              <TabsTrigger value="images">
+                <Image className="h-4 w-4 mr-2" />
+                Images
+              </TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="design" className="space-y-6">
+              {selectedObject && selectedObject.type === 'i-text' && (
+                <div className="space-y-3">
+                  <h3 className="font-medium">Font Style</h3>
+                  <Select onValueChange={changeObjectFont} defaultValue="Noto Sans Devanagari">
+                    <SelectTrigger>
+                      <SelectValue placeholder="Font Family" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Noto Sans Devanagari">Devanagari</SelectItem>
+                      <SelectItem value="Poppins">Poppins</SelectItem>
+                      <SelectItem value="Dancing Script">Decorative</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              
+              <div className="space-y-3">
+                <h3 className="font-medium">Colors</h3>
+                <div className="grid grid-cols-5 gap-2">
+                  {[
+                    "#FF6B9D", "#C471ED", "#12D8FA", "#A0E7E5", "#FFB4B4", 
+                    "#1a1a1a", "#FF1744", "#7B1FA2", "#1976D2", "#388E3C"
+                  ].map((color) => (
+                    <div
+                      key={color}
+                      className="w-8 h-8 rounded-lg cursor-pointer hover:scale-110 transition-transform"
+                      style={{ backgroundColor: color }}
+                      onClick={() => changeObjectColor(color)}
+                    />
+                  ))}
+                </div>
+              </div>
+              
+              <div className="flex flex-col gap-3">
+                <Button variant="outline" size="sm" onClick={handleUndo}>
+                  <Undo className="h-4 w-4 mr-2" />
+                  Undo
+                </Button>
+                <Button variant="outline" size="sm" onClick={handleRedo}>
+                  <Redo className="h-4 w-4 mr-2" />
+                  Redo
+                </Button>
+              </div>
+              
+              <div className="text-xs text-gray-500 mt-4">
+                <p>👆 Click directly on text to edit</p>
+                <p>✏️ Double-click to edit text content</p>
+                <p>🖱️ Click and drag to move elements</p>
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="images" className="space-y-6">
+              <div className="space-y-3">
+                <h3 className="font-medium">Upload Image</h3>
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                  <input 
+                    type="file" 
+                    accept="image/*"
+                    id="image-upload"
+                    onChange={handleUploadImage}
+                    className="hidden"
+                  />
+                  <label htmlFor="image-upload" className="cursor-pointer">
+                    <Image className="h-12 w-12 text-gray-400 mx-auto mb-2" />
+                    <p className="text-sm text-gray-600">Click to upload or drag and drop</p>
+                    <p className="text-xs text-gray-500">PNG, JPG up to 10MB</p>
+                  </label>
+                </div>
+              </div>
+              
+              <div className="space-y-3">
+                <h3 className="font-medium">Decorative Elements</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <div 
+                    className="border rounded-lg p-3 text-center cursor-pointer hover:bg-gray-50"
+                    onClick={() => addDecoration('balloons')}
+                  >
+                    <div className="text-2xl mb-1">🎈</div>
+                    <p className="text-xs">Balloons</p>
                   </div>
-
-                  {/* Child name */}
-                  <div className="text-center mb-8">
-                    <h2 className="text-6xl font-bold text-pink-700 font-marathi">{templateData.title}</h2>
-                    <div className="w-32 h-1 bg-gradient-to-r from-pink-500 to-purple-500 mx-auto mt-4"></div>
+                  <div 
+                    className="border rounded-lg p-3 text-center cursor-pointer hover:bg-gray-50"
+                    onClick={() => addDecoration('cake')}
+                  >
+                    <div className="text-2xl mb-1">🎂</div>
+                    <p className="text-xs">Cake</p>
                   </div>
-
-                  {/* Child photo placeholder */}
-                  <div className="flex justify-center mb-8">
-                    <div className="w-48 h-48 bg-gradient-to-br from-purple-300 to-pink-300 rounded-full border-8 border-white shadow-xl flex items-center justify-center">
-                      <img 
-                        src="/lovable-uploads/a50baf31-1b08-447c-86c7-fb9e7dc31728.png" 
-                        alt="Child photo"
-                        className="w-full h-full object-cover rounded-full"
-                      />
-                    </div>
+                  <div 
+                    className="border rounded-lg p-3 text-center cursor-pointer hover:bg-gray-50"
+                    onClick={() => addDecoration('confetti')}
+                  >
+                    <div className="text-2xl mb-1">🎊</div>
+                    <p className="text-xs">Confetti</p>
                   </div>
-
-                  {/* Event details */}
-                  <div className="text-center mb-8 font-marathi">
-                    <p className="text-lg mb-2">✦ कार्यक्रम ✦</p>
-                    <p className="text-xl font-semibold mb-4">{templateData.date}</p>
-                    <p className="text-lg">{templateData.time}</p>
-                  </div>
-
-                  {/* Description */}
-                  <div className="text-center mb-8">
-                    <p className="font-marathi text-sm leading-relaxed text-gray-700 max-w-2xl mx-auto">
-                      {templateData.description}
-                    </p>
-                  </div>
-
-                  {/* Venue */}
-                  <div className="text-center mb-8">
-                    <p className="text-red-600 font-marathi mb-2">✦ स्थळ :- </p>
-                    <p className="font-marathi text-sm text-gray-700">{templateData.venue}</p>
-                  </div>
-
-                  {/* Bottom section with hosts and contacts */}
-                  <div className="flex justify-between items-end">
-                    <div className="text-left">
-                      <p className="text-red-600 font-marathi mb-2">✦ आपले नम्र ✦</p>
-                      <p className="font-marathi text-sm whitespace-pre-line">{templateData.hostNames}</p>
-                    </div>
-                    
-                    <div className="text-center">
-                      <div className="bg-gradient-to-r from-teal-400 to-blue-500 p-4 rounded-lg text-white mb-4">
-                        <p className="font-bold text-xl">BIRTHDAY</p>
-                        <p className="text-sm">CELEBRATIONS</p>
-                      </div>
-                    </div>
-
-                    <div className="text-right">
-                      <p className="text-red-600 font-marathi mb-2">✦ संपर्क ✦</p>
-                      <p className="text-pink-600 text-sm">📞 {templateData.contact1}</p>
-                      <p className="text-pink-600 text-sm">📞 {templateData.contact2}</p>
-                    </div>
-                  </div>
-
-                  {/* Decorative balloons */}
-                  <div className="absolute bottom-4 left-4">
-                    <div className="text-4xl">🎈🎈</div>
-                  </div>
-                  <div className="absolute bottom-4 right-4">
-                    <div className="text-4xl">🎈🎈</div>
+                  <div 
+                    className="border rounded-lg p-3 text-center cursor-pointer hover:bg-gray-50"
+                    onClick={() => addDecoration('star')}
+                  >
+                    <div className="text-2xl mb-1">⭐</div>
+                    <p className="text-xs">Stars</p>
                   </div>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-
-          {/* Action buttons */}
-          <div className="flex justify-center mt-6 gap-4">
-            <Button variant="outline" size="sm">
-              <Undo className="h-4 w-4 mr-2" />
-              Undo
-            </Button>
-            <Button variant="outline" size="sm">
-              <Redo className="h-4 w-4 mr-2" />
-              Redo
-            </Button>
-          </div>
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
     </div>

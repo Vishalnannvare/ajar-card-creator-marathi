@@ -2,11 +2,10 @@
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { toast } from "sonner";
-import { fabric } from "fabric";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Palette, ImageIcon } from "lucide-react";
 
-// Import our new components
+// Import our components
 import { CanvasEditor } from "@/components/editor/CanvasEditor";
 import { DesignPanel } from "@/components/editor/DesignPanel";
 import { ImagesPanel } from "@/components/editor/ImagesPanel";
@@ -34,7 +33,7 @@ const TemplateEditor = () => {
     
     // Create download link
     const link = document.createElement('a');
-    link.download = 'invitation-card.png';
+    link.download = `${templateId || 'invitation-card'}.png`;
     link.href = dataURL;
     document.body.appendChild(link);
     link.click();
@@ -45,7 +44,7 @@ const TemplateEditor = () => {
 
   const handleUndo = () => {
     if (!canvas) return;
-    if (canvas._objects.length > 0) {
+    if (canvas._objects && canvas._objects.length > 0) {
       canvas.undo();
       toast.info("Undo successful");
     }

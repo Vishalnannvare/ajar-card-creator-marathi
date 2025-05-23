@@ -11,7 +11,7 @@ const Templates = () => {
       title: "First Birthday Celebration",
       titleMarathi: "प्रथम वाढदिवस सोहळा",
       category: "Birthday",
-      image: "/lovable-uploads/a50baf31-1b08-447c-86c7-fb9e7dc31728.png",
+      image: "/lovable-uploads/8ea36766-93bc-4297-85f1-1db528100bbb.png", // Updated to use uploaded image
       isPremium: false,
       likes: 245
     },

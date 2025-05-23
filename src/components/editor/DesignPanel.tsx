@@ -3,9 +3,10 @@ import React from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Undo, Redo } from "lucide-react";
+import { Object as FabricObject } from "fabric";
 
 interface DesignPanelProps {
-  selectedObject: fabric.Object | null;
+  selectedObject: FabricObject | null;
   onFontChange: (font: string) => void;
   onColorChange: (color: string) => void;
   onUndo: () => void;

@@ -10,6 +10,26 @@ interface CanvasEditorProps {
   onTemplateLoaded: () => void;
 }
 
+// Define a templates mapping for better management
+const templateConfigs = {
+  "birthday-template": {
+    background: {
+      type: 'linear',
+      coords: {
+        x1: 0,
+        y1: 0,
+        x2: 600,
+        y2: 800
+      },
+      colorStops: [
+        { offset: 0, color: '#f9c5d1' },
+        { offset: 1, color: '#f3e7e9' }
+      ]
+    },
+    buntingPath: "/lovable-uploads/656232f1-7e41-4fb6-8f98-59eedbe9546a.png",
+  }
+};
+
 export const CanvasEditor = ({ 
   templateId, 
   onCanvasReady, 
@@ -30,6 +50,22 @@ export const CanvasEditor = ({
       preserveObjectStacking: true,
     });
     
+    // Add undo/redo functionality
+    fabricCanvas.undo = function() {
+      if (this._objects.length > 0) {
+        const lastObject = this._objects.pop();
+        if (lastObject) {
+          this.remove(lastObject);
+          this.renderAll();
+        }
+      }
+    };
+    
+    fabricCanvas.redo = function() {
+      console.log("Redo functionality would be implemented here");
+      // Actual implementation would require storing removed objects
+    };
+    
     onCanvasReady(fabricCanvas);
 
     // Event listener for object selection
@@ -45,9 +81,9 @@ export const CanvasEditor = ({
       onObjectSelected(null);
     });
 
-    // Load the birthday template
-    if (templateId === "birthday-template") {
-      loadBirthdayTemplate(fabricCanvas);
+    // Load the template based on templateId
+    if (templateId) {
+      loadTemplate(fabricCanvas, templateId);
     }
 
     return () => {
@@ -55,40 +91,51 @@ export const CanvasEditor = ({
     };
   }, [templateId, onCanvasReady, onObjectSelected]);
 
+  // Dynamic template loading function
+  const loadTemplate = (canvas: fabric.Canvas, id: string) => {
+    setLoading(true);
+    
+    // Check if we have a config for this template
+    const config = templateConfigs[id as keyof typeof templateConfigs];
+    
+    if (!config) {
+      toast.error(`Template with ID "${id}" not found`);
+      setLoading(false);
+      return;
+    }
+    
+    // Set background based on template config
+    canvas.setBackgroundColor(config.background as any, canvas.renderAll.bind(canvas));
+    
+    // Add bunting flags at the top if available in the config
+    if (config.buntingPath) {
+      const buntingImg = document.createElement('img');
+      buntingImg.src = config.buntingPath;
+      buntingImg.onload = () => {
+        const bunting = new fabric.Image(buntingImg, {
+          left: 0,
+          top: 0,
+          width: 600,
+          height: 120,
+          selectable: false,
+          opacity: 0.8
+        });
+        canvas.add(bunting);
+        canvas.sendToBack(bunting);
+      };
+    }
+
+    if (id === "birthday-template") {
+      loadBirthdayTemplate(canvas);
+    }
+    
+    toast.success(`${id.replace('-', ' ')} template loaded! Click on any text to edit directly.`);
+    onTemplateLoaded();
+    setLoading(false);
+  };
+
   // Function to load the birthday template with the provided design
   const loadBirthdayTemplate = (canvas: fabric.Canvas) => {
-    // Background gradient
-    canvas.setBackgroundColor({
-      type: 'linear',
-      coords: {
-        x1: 0,
-        y1: 0,
-        x2: 600,
-        y2: 800
-      },
-      colorStops: [
-        { offset: 0, color: '#f9c5d1' },
-        { offset: 1, color: '#f3e7e9' }
-      ]
-    } as any, canvas.renderAll.bind(canvas));
-
-    // Add bunting flags at the top
-    const buntingImg = document.createElement('img');
-    buntingImg.src = "/lovable-uploads/656232f1-7e41-4fb6-8f98-59eedbe9546a.png";
-    buntingImg.onload = () => {
-      // Use the bunting from the template
-      const bunting = new fabric.Image(buntingImg, {
-        left: 0,
-        top: 0,
-        width: 600,
-        height: 120,
-        selectable: false,
-        opacity: 0.8
-      });
-      canvas.add(bunting);
-      canvas.sendToBack(bunting);
-    };
-
     // Add the blessing text at top
     addEditableText(canvas, "|| श्री गणेशाय नमः ||", 300, 50, {
       fontSize: 24,
@@ -292,10 +339,6 @@ export const CanvasEditor = ({
       selectable: false
     });
     canvas.add(balloonText2);
-
-    toast.success("Birthday template loaded! Click on any text to edit directly.");
-    onTemplateLoaded();
-    setLoading(false);
   };
 
   // Helper function to add editable text

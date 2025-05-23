@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -56,23 +55,20 @@ const TemplateEditor = () => {
 
   // Function to load the birthday template with the provided design
   const loadBirthdayTemplate = (canvas: fabric.Canvas) => {
-    // Background gradient
-    canvas.setBackgroundColor(
-      new fabric.Gradient({
-        type: 'linear',
-        coords: {
-          x1: 0,
-          y1: 0,
-          x2: 600,
-          y2: 800
-        },
-        colorStops: [
-          { offset: 0, color: '#f9c5d1' },
-          { offset: 1, color: '#f3e7e9' }
-        ]
-      }),
-      canvas.renderAll.bind(canvas)
-    );
+    // Background gradient - Fixed syntax for fabric.js
+    canvas.setBackgroundColor({
+      type: 'linear',
+      coords: {
+        x1: 0,
+        y1: 0,
+        x2: 600,
+        y2: 800
+      },
+      colorStops: [
+        { offset: 0, color: '#f9c5d1' },
+        { offset: 1, color: '#f3e7e9' }
+      ]
+    } as any, canvas.renderAll.bind(canvas));
 
     // Add bunting flags at the top
     const buntingImg = new Image();
@@ -118,13 +114,13 @@ const TemplateEditor = () => {
       fontWeight: 'bold'
     });
 
-    // Add decorative line
+    // Add decorative line - Fix the gradient here too
     const line = new fabric.Rect({
       left: 240,
       top: 240,
       width: 120,
       height: 4,
-      fill: new fabric.Gradient({
+      fill: {
         type: 'linear',
         coords: {
           x1: 0,
@@ -136,7 +132,7 @@ const TemplateEditor = () => {
           { offset: 0, color: '#d23369' },
           { offset: 1, color: '#9333ea' }
         ]
-      }),
+      } as any,
       selectable: false
     });
     canvas.add(line);
@@ -236,13 +232,13 @@ const TemplateEditor = () => {
       textAlign: 'right'
     });
 
-    // Add birthday decoration
+    // Add birthday decoration - Fix gradient here too
     const birthdayRect = new fabric.Rect({
       left: 300,
       top: 725,
       width: 120,
       height: 60,
-      fill: new fabric.Gradient({
+      fill: {
         type: 'linear',
         coords: {
           x1: 0,
@@ -254,7 +250,7 @@ const TemplateEditor = () => {
           { offset: 0, color: '#3bb6ad' },
           { offset: 1, color: '#1976d2' }
         ]
-      }),
+      } as any,
       rx: 10,
       ry: 10,
       originX: 'center',

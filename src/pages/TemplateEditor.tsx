@@ -1,9 +1,10 @@
+
 import { useState, useRef, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Download, Save, Type, Palette, Image, Undo, Redo } from "lucide-react";
+import { ArrowLeft, Download, Save, Type, Palette, Image as ImageIcon, Undo, Redo } from "lucide-react";
 import { toast } from "sonner";
 import { fabric } from "fabric";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -70,8 +71,8 @@ const TemplateEditor = () => {
       ]
     } as any, canvas.renderAll.bind(canvas));
 
-    // Add bunting flags at the top
-    const buntingImg = new Image();
+    // Add bunting flags at the top - Fixed Image constructor
+    const buntingImg = document.createElement('img');
     buntingImg.src = "/lovable-uploads/656232f1-7e41-4fb6-8f98-59eedbe9546a.png";
     buntingImg.onload = () => {
       // Use the bunting from the template

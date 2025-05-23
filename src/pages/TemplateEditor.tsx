@@ -4,6 +4,7 @@ import { useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Palette, ImageIcon } from "lucide-react";
+import { Canvas as FabricCanvas, IText, Text, Image, Object as FabricObject } from "fabric";
 
 // Import our components
 import { CanvasEditor } from "@/components/editor/CanvasEditor";
@@ -13,9 +14,9 @@ import { EditorHeader } from "@/components/editor/EditorHeader";
 
 const TemplateEditor = () => {
   const { templateId } = useParams();
-  const [canvas, setCanvas] = useState<fabric.Canvas | null>(null);
+  const [canvas, setCanvas] = useState<FabricCanvas | null>(null);
   const [activeTab, setActiveTab] = useState<"design" | "images">("design");
-  const [selectedObject, setSelectedObject] = useState<fabric.Object | null>(null);
+  const [selectedObject, setSelectedObject] = useState<FabricObject | null>(null);
   const [templateLoaded, setTemplateLoaded] = useState(false);
 
   const handleSave = () => {
@@ -60,7 +61,7 @@ const TemplateEditor = () => {
     if (!canvas || !selectedObject) return;
     
     if (selectedObject.type === 'i-text') {
-      (selectedObject as fabric.IText).set('fill', color);
+      (selectedObject as IText).set('fill', color);
       canvas.renderAll();
     } else {
       selectedObject.set('fill', color);
@@ -72,7 +73,7 @@ const TemplateEditor = () => {
     if (!canvas || !selectedObject) return;
     
     if (selectedObject.type === 'i-text') {
-      (selectedObject as fabric.IText).set('fontFamily', font);
+      (selectedObject as IText).set('fontFamily', font);
       canvas.renderAll();
     }
   };
@@ -85,7 +86,7 @@ const TemplateEditor = () => {
     
     reader.onload = (f) => {
       const data = f.target?.result as string;
-      fabric.Image.fromURL(data, (img) => {
+      Image.fromURL(data, (img) => {
         // Scale down the image if it's too big
         if (img.width && img.height) {
           if (img.width > 200 || img.height > 200) {
@@ -133,7 +134,7 @@ const TemplateEditor = () => {
         return;
     }
     
-    const decoration = new fabric.Text(text, {
+    const decoration = new Text(text, {
       left: 300,
       top: 400,
       fontSize: 36,
